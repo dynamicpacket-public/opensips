@@ -730,7 +730,7 @@ rtrim(str *string)
 
 // returns str with leading and trailing whitespace removed
 static INLINE void
-trim(str *string)
+trim2(str *string)
 {
     ltrim(string);
     rtrim(string);
