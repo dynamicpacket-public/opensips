@@ -64,9 +64,7 @@
 #include "dlg_req_within.h"
 #include "dlg_profile.h"
 #include "dlg_vals.h"
-
-
-
+#include "dlg_tophiding.h"
 
 static int mod_init(void);
 static int child_init(int rank);
@@ -188,6 +186,9 @@ static cmd_export_t cmds[]={
 	{"get_dialog_info",(cmd_function)w_get_dlg_info,      4,fixup_get_info,
 			0, REQUEST_ROUTE| FAILURE_ROUTE | ONREPLY_ROUTE |
 			BRANCH_ROUTE | LOCAL_ROUTE },
+	{"topology_hiding",(cmd_function)w_topology_hiding,0,NULL,
+			0, REQUEST_ROUTE},
+	{"th_seq_req", (cmd_function)w_th_seq_req, 0, NULL, 0, REQUEST_ROUTE},
 	{"load_dlg",  (cmd_function)load_dlg,   0, 0, 0, 0},
 	{0,0,0,0,0,0}
 };

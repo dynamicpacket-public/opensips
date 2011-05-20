@@ -170,6 +170,8 @@ static inline void free_dlg_dlg(struct dlg_cell *dlg)
 			shm_free(dlg->legs[i].r_cseq.s);
 			if (dlg->legs[i].contact.s)
 				shm_free(dlg->legs[i].contact.s); /* + route_set */
+			if(dlg->legs[i].last_vias.s)
+				shm_free(dlg->legs[i].last_vias.s);
 		}
 		shm_free(dlg->legs);
 	}
