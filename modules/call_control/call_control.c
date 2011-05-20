@@ -351,7 +351,7 @@ rtrim(str *string)
 
 // returns string with whitespace trimmed from both ends
 static inline void
-trim(str *string)
+trim2(str *string)
 {
     ltrim(string);
     rtrim(string);
