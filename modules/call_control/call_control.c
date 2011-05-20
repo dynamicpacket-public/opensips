@@ -547,53 +547,6 @@ get_call_info(struct sip_msg *msg, CallControlAction action)
 }
 
 static char*
-make_custom_request(struct sip_msg *msg, CallInfo *call)
-{
-    static char request[8192];
-    int len = 0;
-    AVP_List *al;
-    pv_value_t pt;
-
-    switch (call->action) {
-    case CAInitialize:
-        al = init_avps;
-        break;
-    case CAStart:
-        al = start_avps;
-        break;
-    case CAStop:
-        al = stop_avps;
-        break;
-    default:
-        // should never get here, but keep gcc from complaining
-        assert(False);
-        return NULL;
-    }
-
-    for (; al; al = al->next) {
-        pv_get_spec_value(msg, al->pv, &pt);
-        if (pt.flags & PV_VAL_INT) {
-            len += snprintf(request + len, sizeof(request),
-                      "%.*s = %d ", al->name.len, al->name.s,
-                   pt.ri);
-        } else    if (pt.flags & PV_VAL_STR) {
-            len += snprintf(request + len, sizeof(request),
-                      "%.*s = %.*s ", al->name.len, al->name.s,
-                   pt.rs.len, pt.rs.s);
-        }
-
-          if (len >= sizeof(request)) {
-               LM_ERR("callcontrol request is longer than %ld bytes\n", (unsigned long)sizeof(request));
-            return NULL;
-             }
-    }
-
-
-    return request;
-}
-
-
-static char*
 make_default_request(CallInfo *call)
 {
     static char request[8192];
@@ -608,8 +561,7 @@ make_default_request(CallInfo *call)
                        "sourceip: %.*s\r\n"
                        "callid: %.*s\r\n"
                        "from: %.*s\r\n"
-                       "fromtag: %.*s\r\n"
-                       "\r\n",
+                       "fromtag: %.*s\r\n",
                        call->ruri.len, call->ruri.s,
                        call->diverter.len, call->diverter.s,
                        call->source_ip.len, call->source_ip.s,
@@ -628,8 +580,7 @@ make_default_request(CallInfo *call)
         len = snprintf(request, sizeof(request),
                        "start\r\n"
                        "callid: %.*s\r\n"
-                       "dialogid: %d:%d\r\n"
-                       "\r\n",
+                       "dialogid: %d:%d\r\n",
                        call->callid.len, call->callid.s,
                        call->dialog_id.h_entry, call->dialog_id.h_id);
 
@@ -643,8 +594,7 @@ make_default_request(CallInfo *call)
     case CAStop:
         len = snprintf(request, sizeof(request),
                        "stop\r\n"
-                       "callid: %.*s\r\n"
-                       "\r\n",
+                       "callid: %.*s\r\n",
                        call->callid.len, call->callid.s);
 
         if (len >= sizeof(request)) {
@@ -662,6 +612,75 @@ make_default_request(CallInfo *call)
 
     return request;
 }
+
+
+static char*
+make_custom_request(struct sip_msg *msg, CallInfo *call)
+{
+    static char request[8192];
+    int len = 0;
+    AVP_List *al;
+    pv_value_t pt;
+	
+	// get default request	
+	char *defaultRequest = make_default_request(call);
+	// append to message
+	len += snprintf(request, sizeof(request), "%s", defaultRequest);
+	
+    switch (call->action) {
+		case CAInitialize:
+			al = init_avps;
+			break;
+		case CAStart:
+			al = start_avps;
+			break;
+		case CAStop:
+			al = stop_avps;
+			break;
+		default:
+			// should never get here, but keep gcc from complaining
+			assert(False);
+			return NULL;
+    }
+	
+	// no message
+	if(!msg || msg == 0) 
+	{
+		LM_ERR("callcontrol SIP MESSAGE is NULL(0x%ld) ?? %ld bytes\n", (unsigned long)msg, (unsigned long)sizeof(msg));
+	}
+	// faked reply/message
+	else if(msg == FAKED_REPLY)
+	{
+		LM_ERR("callcontrol SIP MESSAGE is FAKED REPLY (0x%ld) ??\n", (unsigned long)msg);
+	}
+	// assume message is valid?
+	else
+	{	
+		for (; al; al = al->next) {
+			pv_get_spec_value(msg, al->pv, &pt);
+			if (pt.flags & PV_VAL_INT) {
+				len += snprintf(request + len, sizeof(request),
+								"%.*s: %d\r\n", al->name.len, al->name.s,
+								pt.ri);
+			} else    if (pt.flags & PV_VAL_STR) {
+				len += snprintf(request + len, sizeof(request),
+								"%.*s: %.*s\r\n", al->name.len, al->name.s,
+								pt.rs.len, pt.rs.s);
+			}
+			
+			if (len >= sizeof(request)) {
+				LM_ERR("callcontrol request is longer than %ld bytes\n", (unsigned long)sizeof(request));
+				return NULL;
+			}
+		}
+	}
+
+
+	
+    return request;
+}
+
+
 
 
 // Functions dealing with the external call_control helper
@@ -723,6 +742,9 @@ send_command(char *command)
     if (!callcontrol_connect())
         return NULL;
 
+	// add command terminator
+	strncat(command,"\r\n",8192);
+	
     cmd_len = strlen(command);
 
     for (sent=0, tries=0; sent<cmd_len && tries<3; tries++, sent+=bytes) {
@@ -831,7 +853,6 @@ call_control_initialize(struct sip_msg *msg)
         LM_ERR("can't retrieve call info\n");
         return -5;
     }
-
 
     if (!init_avps)
         message = make_default_request(call);
