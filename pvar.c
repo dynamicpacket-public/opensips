@@ -236,6 +236,18 @@ static int pv_get_times(struct sip_msg *msg, pv_param_t *param,
 
 	return pv_get_uintval(msg, param, res, (unsigned int)time(NULL));
 }
+static int pv_get_timems(struct sip_msg *msg, pv_param_t *param,
+		pv_value_t *res)
+{
+	struct timeval TP;
+
+	if(msg==NULL)
+		return -1;
+
+	gettimeofday(&TP, NULL);
+	return pv_get_uintval(msg, param, res, (unsigned int)((TP.tv_sec * 1000) + (TP.tv_usec / 1000)));
+}
+
 
 static int pv_get_timem(struct sip_msg *msg, pv_param_t *param,
 		pv_value_t *res)
@@ -3266,6 +3278,9 @@ static pv_export_t _pv_names_table[] = {
 		0, 0, 0, 0},
 	{{"Tsm", (sizeof("Tsm")-1)}, /* */
 		PVT_TIMES, pv_get_timem, 0,
+		0, 0, 0, 0},
+	{{"Tsms", (sizeof("Tsms")-1)}, /* */
+		PVT_TIMES, pv_get_timems, 0,
 		0, 0, 0, 0},
 	{{"TS", (sizeof("TS")-1)}, /* */
 		PVT_TIMES, pv_get_start_times, 0,
